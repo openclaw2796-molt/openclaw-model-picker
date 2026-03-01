@@ -15,10 +15,50 @@ BIN_DIR="$HOME/.local/bin"
 LAUNCHER_PATH="$BIN_DIR/openclaw-model-picker"
 
 need_cmd() {
-  command -v "$1" >/dev/null 2>&1 || {
-    echo "ERROR: Required command not found: $1" >&2
-    exit 1
-  }
+  local cmd="$1"
+  if command -v "$cmd" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local os
+  os="$(uname -s 2>/dev/null || echo unknown)"
+
+  echo "ERROR: Required command not found: $cmd" >&2
+  echo >&2
+
+  case "$cmd" in
+    curl)
+      echo "Install curl:" >&2
+      if [ "$os" = "Darwin" ]; then
+        echo "  macOS: brew install curl" >&2
+      else
+        echo "  Ubuntu/Debian: sudo apt-get update && sudo apt-get install -y curl" >&2
+      fi
+      ;;
+    tar)
+      echo "Install tar:" >&2
+      if [ "$os" = "Darwin" ]; then
+        echo "  macOS: (tar is built-in)" >&2
+        echo "  If missing: brew install gnu-tar" >&2
+      else
+        echo "  Ubuntu/Debian: sudo apt-get install -y tar" >&2
+      fi
+      ;;
+    node|npm)
+      echo "Install Node.js + npm:" >&2
+      if [ "$os" = "Darwin" ]; then
+        echo "  macOS: brew install node" >&2
+      else
+        echo "  Ubuntu/Debian: sudo apt-get update && sudo apt-get install -y nodejs npm" >&2
+      fi
+      echo "  Or install from: https://nodejs.org/" >&2
+      ;;
+    *)
+      echo "Please install '$cmd' using your system package manager." >&2
+      ;;
+  esac
+
+  exit 1
 }
 
 need_cmd curl
