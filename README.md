@@ -58,6 +58,15 @@ curl -fsSL https://raw.githubusercontent.com/openclaw2796-molt/openclaw-model-pi
 ```
 
 
+## Requirements
+
+- OpenClaw installed (uses `~/.openclaw/openclaw.json`)
+- Node.js + npm (installer runs `npm install`)
+- macOS/Linux with `curl` + `tar`
+- Windows: not supported yet (unless using WSL)
+
+
+
 ## Uninstall
 
 ```bash
