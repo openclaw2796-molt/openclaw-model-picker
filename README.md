@@ -41,3 +41,7 @@ Double-click `run.command`.
 ```bash
 OPENCLAW_CONFIG_PATH=/path/to/openclaw.json openclaw-model-picker
 ```
+
+## License
+
+MIT
