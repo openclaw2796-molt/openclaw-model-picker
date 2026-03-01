@@ -9,6 +9,8 @@ openclaw-model-picker
 ```
 
 # OpenClaw Model Picker (local)
+[![Release](https://img.shields.io/github/v/release/openclaw2796-molt/openclaw-model-picker)](https://github.com/openclaw2796-molt/openclaw-model-picker/releases)
+[![License: MIT](https://img.shields.io/github/license/openclaw2796-molt/openclaw-model-picker)](LICENSE)
 
 A tiny local-only web app to change OpenClaw’s default model **without editing JSON**.
 
