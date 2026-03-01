@@ -1,3 +1,13 @@
+## Quick Copy (all-in-one)
+
+```bash
+git clone https://github.com/openclaw2796-molt/openclaw-model-picker.git
+cd openclaw-model-picker
+./install.sh
+openclaw-model-picker
+# Open the printed URL (usually http://127.0.0.1:18888)
+```
+
 # OpenClaw Model Picker (local)
 
 A tiny local-only web app to change OpenClaw’s default model **without editing JSON**.
