@@ -1,0 +1,33 @@
+# Node
+node_modules/
+
+# OS
+.DS_Store
+
+# Runtime
+nohup.out
+.port
+*.log
+
+# Backups / temp
+*.bak-*
+*.tmp-*
+
+# Never commit OpenClaw config or any json that might contain secrets
+.openclaw/
+**/.openclaw/**
+
+# Common credential locations
+.env
+.env.*
+**/*.pem
+**/*.key
+**/*oauth*
+**/*token*
+**/*secret*
+
+# JSON files often contain keys in OpenClaw installs
+# (Keep this repo's package.json / package-lock.json tracked)
+*.json
+!package.json
+!package-lock.json
