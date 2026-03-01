@@ -54,7 +54,7 @@ MIT
 ## One-line install (curl)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/openclaw2796-molt/openclaw-model-picker/v1.0.2/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/openclaw2796-molt/openclaw-model-picker/v1.0.3/install.sh | bash
 ```
 
 
