@@ -8,17 +8,37 @@
     body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; max-width: 820px; }
     .row { margin: 14px 0; }
     label { display: block; font-weight: 600; margin-bottom: 6px; }
-    select, textarea, button { font-size: 14px; }
+    select, textarea, button, input { font-size: 14px; }
     select { width: 100%; padding: 8px; }
+    input { width: 100%; padding: 8px; }
     textarea { width: 100%; height: 140px; padding: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     button { padding: 10px 14px; margin-right: 10px; }
     .hint { color: #555; font-size: 13px; }
     .status { margin-top: 14px; padding: 10px; background: #f6f6f6; border: 1px solid #ddd; white-space: pre-wrap; }
+    .list { border: 1px solid #ddd; background: #fff; }
+    .item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border-top:1px solid #eee; }
+    .item:first-child { border-top:none; }
+    .model { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; }
+    .actions button { padding: 6px 10px; margin-right: 6px; }
   </style>
 </head>
 <body>
   <h1>Model Picker</h1>
   <div class="hint">Local-only tool (127.0.0.1). It only edits OpenClaw’s default primary model + fallback list.</div>
+
+  <div class="row">
+    <label for="search">Presets + search</label>
+    <input id="search" type="text" placeholder="Search models (local)" />
+    <div class="hint">Search is local-only: presets + your current primary/fallbacks. Use the actions to set Primary or append to Fallbacks.</div>
+    <div style="margin-top:10px">
+      <div class="hint" style="margin-bottom:6px"><strong>Presets</strong></div>
+      <div id="presets"></div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="hint" style="margin-bottom:6px"><strong>Matches</strong></div>
+      <div id="results"></div>
+    </div>
+  </div>
 
   <div class="row">
     <label for="primary">Primary model</label>
@@ -43,6 +63,17 @@
   const elPrimary = document.getElementById('primary');
   const elFallback = document.getElementById('fallback');
   const out = document.getElementById('out');
+  const elSearch = document.getElementById('search');
+  const elPresets = document.getElementById('presets');
+  const elResults = document.getElementById('results');
+
+  const PRESETS = [
+    { id: 'openai-codex/gpt-5.2', label: 'Codex gpt-5.2' },
+    { id: 'openrouter/openrouter/auto', label: 'OpenRouter Auto' },
+    { id: 'openrouter/openrouter/free', label: 'OpenRouter Free' },
+  ];
+
+  let lastStatus = null;
 
   function setOut(msg) { out.textContent = msg; }
 
@@ -66,11 +97,139 @@
     }
   }
 
+  function ensurePrimaryOption(model) {
+    const m = String(model || '').trim();
+    if (!m) return;
+    const exists = Array.from(elPrimary.options).some(o => o.value === m);
+    if (!exists) {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      elPrimary.appendChild(opt);
+    }
+    elPrimary.value = m;
+  }
+
+  function getFallbackLines() {
+    return elFallback.value
+      .split(/\r?\n/)
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  function addFallbackModel(model) {
+    const m = String(model || '').trim();
+    if (!m) return;
+    const cur = getFallbackLines();
+    if (!cur.includes(m)) cur.push(m);
+    elFallback.value = cur.join('\n');
+  }
+
+  function unique(list) {
+    const out = [];
+    const seen = new Set();
+    for (const x of list) {
+      const v = String(x || '').trim();
+      if (!v || seen.has(v)) continue;
+      seen.add(v);
+      out.push(v);
+    }
+    return out;
+  }
+
+  function combinedLocalModels() {
+    const primary = lastStatus?.primary || '';
+    const fallback = Array.isArray(lastStatus?.fallback) ? lastStatus.fallback : [];
+    return unique([ ...PRESETS.map(p => p.id), primary, ...fallback ]);
+  }
+
+  function renderPresets() {
+    const box = document.createElement('div');
+    box.className = 'list';
+
+    for (const p of PRESETS) {
+      const row = document.createElement('div');
+      row.className = 'item';
+
+      const left = document.createElement('div');
+      left.innerHTML = `<div><strong>${p.label}</strong></div><div class="model">${p.id}</div>`;
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      const b1 = document.createElement('button');
+      b1.textContent = 'Set Primary';
+      b1.addEventListener('click', () => { ensurePrimaryOption(p.id); setOut('Selected primary: ' + p.id); });
+
+      const b2 = document.createElement('button');
+      b2.textContent = 'Add to Fallbacks';
+      b2.addEventListener('click', () => { addFallbackModel(p.id); setOut('Added fallback: ' + p.id); });
+
+      actions.appendChild(b1);
+      actions.appendChild(b2);
+
+      row.appendChild(left);
+      row.appendChild(actions);
+      box.appendChild(row);
+    }
+
+    elPresets.innerHTML = '';
+    elPresets.appendChild(box);
+  }
+
+  function renderResults(query) {
+    const q = String(query || '').trim().toLowerCase();
+    const all = combinedLocalModels();
+    const filtered = q ? all.filter(m => m.toLowerCase().includes(q)) : all;
+
+    const box = document.createElement('div');
+    box.className = 'list';
+
+    if (filtered.length === 0) {
+      const row = document.createElement('div');
+      row.className = 'item';
+      row.textContent = 'No matches.';
+      box.appendChild(row);
+    } else {
+      for (const m of filtered.slice(0, 50)) {
+        const row = document.createElement('div');
+        row.className = 'item';
+
+        const left = document.createElement('div');
+        left.innerHTML = `<div class="model">${m}</div>`;
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+
+        const b1 = document.createElement('button');
+        b1.textContent = 'Set Primary';
+        b1.addEventListener('click', () => { ensurePrimaryOption(m); setOut('Selected primary: ' + m); });
+
+        const b2 = document.createElement('button');
+        b2.textContent = 'Add to Fallbacks';
+        b2.addEventListener('click', () => { addFallbackModel(m); setOut('Added fallback: ' + m); });
+
+        actions.appendChild(b1);
+        actions.appendChild(b2);
+
+        row.appendChild(left);
+        row.appendChild(actions);
+        box.appendChild(row);
+      }
+    }
+
+    elResults.innerHTML = '';
+    elResults.appendChild(box);
+  }
+
   async function load() {
     setOut('Loading…');
     const s = await api('/api/status');
+    lastStatus = s;
     setOptions(s.options || [], s.primary || '');
     elFallback.value = (s.fallback || []).join('\n');
+    renderPresets();
+    renderResults(elSearch ? elSearch.value : '');
     setOut('Loaded current settings.');
   }
 
@@ -84,6 +243,7 @@
       body: JSON.stringify({ primary, fallback })
     });
     setOut('Saved. (Backup created automatically.)');
+    await load();
   }
 
   async function apply() {
@@ -95,6 +255,12 @@
   document.getElementById('reload').addEventListener('click', () => load().catch(e => setOut('Error: ' + e.message)));
   document.getElementById('save').addEventListener('click', () => save().catch(e => setOut('Error: ' + e.message)));
   document.getElementById('apply').addEventListener('click', () => apply().catch(e => setOut('Error: ' + e.message)));
+
+  if (elSearch) {
+    elSearch.addEventListener('input', () => {
+      try { renderResults(elSearch.value); } catch { /* ignore */ }
+    });
+  }
 
   load().catch(e => setOut('Error: ' + e.message));
 </script>

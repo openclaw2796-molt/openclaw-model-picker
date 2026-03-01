@@ -14,6 +14,8 @@ openclaw-model-picker
 
 A tiny local-only web app to change OpenClaw’s default model **without editing JSON**.
 
+Includes quick presets + local-only search to speed up picking common models.
+
 ## What it edits (and only this)
 - `agents.defaults.model.primary`
 - `agents.defaults.model.fallbacks`
@@ -52,7 +54,7 @@ MIT
 ## One-line install (curl)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/openclaw2796-molt/openclaw-model-picker/v1.0.1/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/openclaw2796-molt/openclaw-model-picker/v1.0.2/install.sh | bash
 ```
 
 

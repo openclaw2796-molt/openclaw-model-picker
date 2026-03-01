@@ -7,7 +7,7 @@ set -euo pipefail
 # - Creates launcher: ~/.local/bin/openclaw-model-picker
 
 REPO="openclaw2796-molt/openclaw-model-picker"
-VERSION_DEFAULT="v1.0.1"
+VERSION_DEFAULT="v1.0.2"
 VERSION="${OCMP_VERSION:-$VERSION_DEFAULT}"
 
 INSTALL_DIR="$HOME/.openclaw/tools/model-picker"
