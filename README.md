@@ -47,3 +47,18 @@ OPENCLAW_CONFIG_PATH=/path/to/openclaw.json openclaw-model-picker
 ## License
 
 MIT
+
+
+## One-line install (curl)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/openclaw2796-molt/openclaw-model-picker/v1.0.1/install.sh | bash
+```
+
+
+## Uninstall
+
+```bash
+rm -rf ~/.openclaw/tools/model-picker && rm -f ~/.local/bin/openclaw-model-picker
+```
+

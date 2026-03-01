@@ -1,53 +1,112 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+# OpenClaw Model Picker installer
+# - Works when executed from a cloned repo OR via curl | bash
+# - Installs into: ~/.openclaw/tools/model-picker/
+# - Creates launcher: ~/.local/bin/openclaw-model-picker
+
+REPO="openclaw2796-molt/openclaw-model-picker"
+VERSION_DEFAULT="v1.0.1"
+VERSION="${OCMP_VERSION:-$VERSION_DEFAULT}"
+
 INSTALL_DIR="$HOME/.openclaw/tools/model-picker"
+BIN_DIR="$HOME/.local/bin"
+LAUNCHER_PATH="$BIN_DIR/openclaw-model-picker"
 
-mkdir -p "$INSTALL_DIR"
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "ERROR: Required command not found: $1" >&2
+    exit 1
+  }
+}
 
-# Copy app files (no node_modules)
-rsync -a --delete \
-  --exclude 'node_modules' \
-  --exclude '.git' \
-  --exclude '.DS_Store' \
-  "$REPO_DIR/" "$INSTALL_DIR/"
+need_cmd curl
+need_cmd tar
+need_cmd node
+need_cmd npm
 
-# Install dependencies
-cd "$INSTALL_DIR"
-if command -v npm >/dev/null 2>&1; then
-  npm install --silent
-else
-  echo "ERROR: npm is required. Please install Node.js (which includes npm)." >&2
-  exit 1
+mkdir -p "$INSTALL_DIR" "$BIN_DIR"
+
+SCRIPT_DIR=""
+# If running from a file (not stdin), resolve directory.
+SCRIPT_REF="$0"
+if declare -p BASH_SOURCE >/dev/null 2>&1; then
+  # bash array; may be unset in some execution modes under -u
+  SCRIPT_REF="${BASH_SOURCE[0]-}"
+fi
+if [[ "$SCRIPT_REF" != "bash" && "$SCRIPT_REF" != "-" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_REF")" && pwd)"
 fi
 
-# Create launcher command: openclaw-model-picker
-LAUNCHER_CONTENT='#!/usr/bin/env bash
+is_repo_checkout() {
+  local d="$1"
+  [[ -n "$d" ]] && [[ -f "$d/package.json" ]] && [[ -f "$d/server.js" ]] && [[ -f "$d/index.html" ]]
+}
+
+copy_from_dir() {
+  local src="$1"
+  # Copy only what we need; do NOT copy node_modules or git metadata.
+  for f in index.html server.js package.json package-lock.json run.command LICENSE README.md .port; do
+    if [[ -e "$src/$f" ]]; then
+      rm -rf "$INSTALL_DIR/$f" || true
+      cp -a "$src/$f" "$INSTALL_DIR/" 2>/dev/null || cp "$src/$f" "$INSTALL_DIR/"
+    fi
+  done
+}
+
+download_and_extract_release() {
+  local version="$1"
+  TMPDIR_OCMP="$(mktemp -d)"
+  trap "rm -rf '$TMPDIR_OCMP'" EXIT
+
+  local url="https://github.com/${REPO}/archive/refs/tags/${version}.tar.gz"
+  echo "Downloading ${REPO} ${version}..." >&2
+
+  curl -fsSL "$url" -o "$TMPDIR_OCMP/src.tgz"
+
+  mkdir -p "$TMPDIR_OCMP/src"
+  tar -xzf "$TMPDIR_OCMP/src.tgz" -C "$TMPDIR_OCMP/src" --strip-components=1
+
+  if ! is_repo_checkout "$TMPDIR_OCMP/src"; then
+    echo "ERROR: Downloaded archive did not contain expected app files." >&2
+    exit 1
+  fi
+
+  copy_from_dir "$TMPDIR_OCMP/src"
+}
+
+# Install app files
+if is_repo_checkout "$SCRIPT_DIR"; then
+  copy_from_dir "$SCRIPT_DIR"
+else
+  download_and_extract_release "$VERSION"
+fi
+
+# Install JS dependencies (local to INSTALL_DIR)
+cd "$INSTALL_DIR"
+npm install --silent --no-fund --no-audit
+
+# Create launcher
+cat > "$LAUNCHER_PATH" <<'LAUNCH'
+#!/usr/bin/env bash
 set -euo pipefail
 APP_DIR="$HOME/.openclaw/tools/model-picker"
 cd "$APP_DIR"
 exec node server.js
-'
-
-# Prefer /usr/local/bin if writable; otherwise use ~/.local/bin
-if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
-  BIN_DIR="/usr/local/bin"
-else
-  BIN_DIR="$HOME/.local/bin"
-  mkdir -p "$BIN_DIR"
-fi
-
-LAUNCHER_PATH="$BIN_DIR/openclaw-model-picker"
-printf "%s" "$LAUNCHER_CONTENT" > "$LAUNCHER_PATH"
+LAUNCH
 chmod +x "$LAUNCHER_PATH"
 
 echo "Installed to: $INSTALL_DIR"
 echo "Launcher: $LAUNCHER_PATH"
+echo
+
+echo "Run: openclaw-model-picker"
+echo "It will print a local URL (127.0.0.1) when it starts."
 
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
   echo
   echo "NOTE: Your PATH may not include $BIN_DIR."
-  echo "If the command 'openclaw-model-picker' is not found, run:" 
+  echo "If 'openclaw-model-picker' is not found, add this to your shell profile:" 
   echo "  export PATH=\"$BIN_DIR:\$PATH\""
 fi
